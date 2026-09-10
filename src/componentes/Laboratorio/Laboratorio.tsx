@@ -175,7 +175,7 @@ export function Laboratorio() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `curva-experimento-${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+    link.download = `curva-studio-experimento-${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -219,13 +219,13 @@ export function Laboratorio() {
     <div className="lab-app">
       <a className="skip-link" href="#experimento">Ir para o experimento</a>
       <header className="app-header">
-        <a href="#experimento" className="brand" aria-label="Curva — laboratório de dinâmica">
+        <a href="#experimento" className="brand" aria-label="CURVA Studio — laboratório de dinâmica">
           <span className="brand-mark">
             <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
               <path d="M5 8v18h22M7 12c5 0 4 10 10 10S22 6 27 6" stroke="currentColor" strokeWidth="1.6" />
             </svg>
           </span>
-          <strong>curva<span>.</span></strong>
+          <strong>CURVA <span>Studio</span></strong>
           <span className="brand-description">laboratório de dinâmica</span>
         </a>
         <nav className="header-nav" aria-label="Navegação principal">
@@ -397,7 +397,7 @@ export function Laboratorio() {
             aoAlterarIntervalo={setIntervaloRegistro}
           />
           <footer className="workspace-footer">
-            <span>© 2026 CURVA <span> / </span> Todos os direitos reservados</span>
+            <span>© 2026 CURVA Studio <span> / </span> Todos os direitos reservados</span>
             <span>Unidades SI · Simulação numérica aproximada</span>
           </footer>
         </main>

@@ -1,11 +1,13 @@
 # Modelo físico
 
-O Curva simula uma partícula de massa `m` confinada a uma trajetória `y = f(x)`, sob gravidade uniforme e uma resistência por atrito. A posição inicial é o limite esquerdo do domínio. Todas as grandezas físicas usam o Sistema Internacional de Unidades.
+O CURVA Studio simula uma partícula de massa `m` confinada a uma trajetória `y = f(x)`, sob gravidade uniforme e uma resistência por atrito. A posição inicial é o limite esquerdo do domínio. Todas as grandezas físicas usam o Sistema Internacional de Unidades.
 
 ## Grandezas exibidas
 
 | Grandeza | Cálculo | Unidade e interpretação |
 | --- | --- | --- |
+| Tempo | `t` | s; tempo efetivamente integrado na simulação, independente do tempo real de reprodução. |
+| Posição horizontal | `x` | m; coordenada no domínio da função, não a distância percorrida ao longo da curva. |
 | Velocidade | `v` | m/s; velocidade ao longo da curva, positiva no sentido de x crescente e negativa no retorno. A rapidez é `abs(v)`. |
 | Altura | `y = f(x)` | m; coordenada vertical relativa a `y = 0`. |
 | Energia cinética | `Ec = m v² / 2` | J; sempre não negativa, independentemente do sentido do movimento. |
@@ -13,6 +15,8 @@ O Curva simula uma partícula de massa `m` confinada a uma trajetória `y = f(x)
 | Energia mecânica | `Em = Ec + Ep` | J; soma calculada a partir do mesmo estado físico das demais grandezas. |
 
 O zero da energia potencial é o eixo `y = 0`, não o mínimo da curva nem a borda do gráfico. Para `m = 2 kg`, `g = 10 m/s²`, `y = 3 m` e `v = ±4 m/s`, as energias são `Ec = 16 J`, `Ep = 60 J` e `Em = 76 J`.
+
+No código, o campo `energiaTotal` representa `Em`; no CSV, recebe o cabeçalho `energia_total_J`. Essa grandeza soma as energias cinética e potencial e não inclui o calor gerado pelo atrito. Os valores padrão e as faixas editáveis estão no [README](../README.md#parâmetros-e-controles).
 
 As expressões de energia e a conservação na ausência de dissipação seguem [OpenStax, Physics, seção 9.2 — Mechanical Energy and Conservation of Energy](https://openstax.org/books/physics/pages/9-2-mechanical-energy-and-conservation-of-energy).
 
@@ -41,13 +45,19 @@ Inversões, repouso e chegada às fronteiras são tratados como eventos. O ensai
 
 Alterar o ritmo de reprodução muda a relação entre tempo real e tempo simulado. Isso preserva as equações e a cadência de integração. A execução desconsidera o tempo em abas suspensas e limita a recuperação após travamentos do navegador.
 
+O avanço manual solicita um passo de `1/120 s`, independentemente do ritmo e do intervalo das amostras. Seu registro é preservado mesmo fora da grade regular de amostragem; se o ensaio encerrar durante o passo, o tempo avançado pode ser menor.
+
 ## Amostras, indicadores e CSV
 
 Uma amostra é um registro do tempo, posição, velocidade, altura e energias de um estado calculado. O histórico conserva os estados da cadência externa de 120 Hz, a condição inicial e os registros extras de avanço manual e encerramento. Os subpassos internos do RK4 não são todos armazenados.
 
+A configuração `quantidadeAmostras = 220` define os pontos espaciais usados para representar a trajetória. Ela é independente dos registros temporais e do passo de integração. As propriedades de configuração `largura`, `altura` e `margem` pertencem à área de desenho; a altura física registrada é `y = f(x)`.
+
 O intervalo selecionável é `0,025`, `0,05`, `0,1`, `0,25`, `0,5`, `1` ou `2 s`, com padrão de `0,05 s`. Mudar esse intervalo seleciona novamente o histórico já calculado, inclusive com o ensaio pausado ou concluído. A operação não altera a física nem interpola valores.
 
 Gráficos, tabela e CSV compartilham a seleção de amostras. A condição inicial e os registros extras são preservados sem duplicar estados idênticos; por isso, reduzir o intervalo pela metade não necessariamente duplica a contagem total. Os indicadores exibem o estado atual e podem estar adiante da última amostra regular durante a execução ou pausa.
+
+Para séries longas, a representação visual dos gráficos temporais seleciona até 600 pontos por série, preservando extremos, sem alterar as amostras disponíveis no histórico ou no CSV. A tabela exibe somente as últimas oito amostras e omite a coluna de altura, que permanece disponível no CSV e no indicador instantâneo.
 
 Os valores exibidos são arredondados, mas `Em` é calculada com os valores completos. A soma das parcelas visíveis pode diferir em `0,01 J` da energia mecânica exibida. O CSV usa ponto decimal e até 12 algarismos significativos, com unidades nos cabeçalhos. O histórico fica na memória da sessão e é descartado ao reiniciar, trocar as condições físicas ou recarregar a página; o CSV contém as amostras, sem os metadados completos necessários para reconstruir um ensaio.
 

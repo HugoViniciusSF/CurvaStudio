@@ -74,6 +74,7 @@ h1,h2,h3,p {
 .brand-mark {
   width:34px;
   height:34px;
+  flex-shrink:0;
   color:var(--green)
 }
 .brand-mark svg {
@@ -81,12 +82,16 @@ h1,h2,h3,p {
   height:100%
 }
 .brand strong {
-  font-size:30px;
+  font-size:26px;
   font-weight:650;
-  letter-spacing:-1.4px
+  letter-spacing:-.8px;
+  white-space:nowrap
 }
 .brand strong>span {
-  color:var(--green)
+  color:var(--green);
+  font-size:.8em;
+  font-weight:500;
+  letter-spacing:-.4px
 }
 .brand-description {
   font-size:12px;
@@ -1140,7 +1145,7 @@ h1,h2,h3,p {
     flex:1
   }
   .brand strong {
-    font-size:26px
+    font-size:22px
   }
   .brand-mark {
     width:29px;
