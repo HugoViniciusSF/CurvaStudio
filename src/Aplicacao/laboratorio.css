@@ -1155,11 +1155,11 @@ h1,h2,h3,p {
     order:3;
     width:100%;
     height:40px;
-    gap:24px;
+    gap:clamp(8px,3vw,24px);
     justify-content:center
   }
   .header-nav button {
-    font-size:13px
+    font-size:12px
   }
   .app-header .export-button {
     font-size:12px
@@ -1283,6 +1283,18 @@ h1,h2,h3,p {
   }
 }
 @media(max-width:420px) {
+  .header-nav {
+    gap:7px
+  }
+  .header-nav button {
+    font-size:11px;
+    gap:5px;
+    padding:0
+  }
+  .header-nav button svg {
+    width:14px;
+    height:14px
+  }
   .settings-panel {
     grid-template-columns:1fr;
     padding:22px

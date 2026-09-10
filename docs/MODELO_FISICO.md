@@ -1,6 +1,6 @@
 # Modelo físico
 
-O CURVA Studio simula uma partícula de massa `m` confinada a uma trajetória `y = f(x)`, sob gravidade uniforme e uma resistência por atrito. A posição inicial é o limite esquerdo do domínio. Todas as grandezas físicas usam o Sistema Internacional de Unidades.
+A guia **Laboratório** do CURVA Studio simula uma partícula de massa `m` confinada a uma trajetória `y = f(x)`, sob gravidade uniforme e uma resistência por atrito. A posição inicial é o limite esquerdo do domínio. Todas as grandezas físicas usam o Sistema Internacional de Unidades. A guia espacial usa um [modelo independente para o Looping 3D](LOOPING_3D.md).
 
 ## Grandezas exibidas
 

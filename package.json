@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "tsc -b && vite build",
-    "test": "node --test scripts/testar-expressoes.mjs scripts/testar-fisica.mjs scripts/testar-simulacao.mjs",
+    "test": "node --test scripts/testar-expressoes.mjs scripts/testar-fisica.mjs scripts/testar-simulacao.mjs scripts/testar-looping.mjs scripts/testar-controle-looping.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "check": "tsc -b"
   },

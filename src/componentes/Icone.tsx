@@ -16,6 +16,7 @@ const caminhos = {
   close: "m6 6 12 12M6 18 18 6",
   settings: "M4 7h16M4 17h16M8 4v6M16 14v6",
   flask: "M9 3h6M10 3v7L4 20h16l-6-10V3M7 15h10",
+  loop: "M3 19h9a7 7 0 1 0-7-7c0 4 3 7 7 7h9",
 } as const;
 
 export function Icone({ nome, size = 18, style }: { nome: keyof typeof caminhos; size?: number; style?: CSSProperties }) {

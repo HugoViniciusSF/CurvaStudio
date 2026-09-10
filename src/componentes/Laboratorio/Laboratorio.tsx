@@ -19,6 +19,7 @@ import { DialogoRoteiros } from "./DialogoRoteiros";
 import { PainelAnalise } from "./PainelAnalise";
 import { PainelGrandezas } from "./PainelGrandezas";
 import type { RoteiroEstudo } from "./roteiros";
+import { Looping } from "../Looping/Looping";
 
 const ROTULOS_ESTADO: Record<EstadoSimulacao, string> = {
   PRONTO: "Pronto para iniciar",
@@ -29,6 +30,8 @@ const ROTULOS_ESTADO: Record<EstadoSimulacao, string> = {
 };
 
 export function Laboratorio() {
+  const [guiaAtiva, setGuiaAtiva] = useState<"laboratorio" | "looping">("laboratorio");
+  const [loopingVisitado, setLoopingVisitado] = useState(false);
   const [modelos, setModelos] = useState<ModeloCurva[]>(modelosPadrao);
   const [configuracao, setConfiguracao] = useState(configuracaoPadrao);
   const [idSelecionado, setIdSelecionado] = useState(modelosPadrao[0].id);
@@ -201,7 +204,15 @@ export function Laboratorio() {
 
   function abrirRoteiros() {
     pausar();
+    setGuiaAtiva("laboratorio");
     setRoteirosAbertos(true);
+  }
+
+  function abrirLooping() {
+    pausar();
+    setRoteirosAbertos(false);
+    setLoopingVisitado(true);
+    setGuiaAtiva("looping");
   }
 
   function executar() {
@@ -217,24 +228,26 @@ export function Laboratorio() {
 
   return (
     <div className="lab-app">
-      <a className="skip-link" href="#experimento">Ir para o experimento</a>
+      <a className="skip-link" href={guiaAtiva === "looping" ? "#looping" : "#experimento"}>Ir para o experimento</a>
       <header className="app-header">
-        <a href="#experimento" className="brand" aria-label="CURVA Studio — laboratório de dinâmica">
+        <a href={guiaAtiva === "looping" ? "#looping" : "#experimento"} className="brand" aria-label="CURVA Studio">
           <span className="brand-mark">
             <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
               <path d="M5 8v18h22M7 12c5 0 4 10 10 10S22 6 27 6" stroke="currentColor" strokeWidth="1.6" />
             </svg>
           </span>
           <strong>CURVA <span>Studio</span></strong>
-          <span className="brand-description">laboratório de dinâmica</span>
         </a>
         <nav className="header-nav" aria-label="Navegação principal">
-          <button className="nav-active" onClick={() => setRoteirosAbertos(false)}>
+          <button className={guiaAtiva === "laboratorio" ? "nav-active" : undefined} aria-current={guiaAtiva === "laboratorio" ? "page" : undefined}
+            onClick={() => { setGuiaAtiva("laboratorio"); setRoteirosAbertos(false); }}>
             <Icone nome="flask" />Laboratório
           </button>
+          <button className={guiaAtiva === "looping" ? "nav-active" : undefined} aria-current={guiaAtiva === "looping" ? "page" : undefined}
+            onClick={abrirLooping}><Icone nome="loop" />Looping 3D</button>
           <button onClick={abrirRoteiros}><Icone nome="book" />Roteiros de estudo</button>
         </nav>
-        <Button
+        {guiaAtiva === "laboratorio" && <Button
           className="export-button"
           variant="outlined"
           startIcon={<Icone nome="download" size={16} />}
@@ -242,8 +255,9 @@ export function Laboratorio() {
           onClick={exportarDados}
         >
           Exportar dados
-        </Button>
+        </Button>}
       </header>
+      <div hidden={guiaAtiva !== "laboratorio"}>
       <div className="lab-layout">
         <aside className="settings-panel" aria-label="Configuração do experimento">
           <div className="settings-heading"><Icone nome="settings" /><h2>Configurar experimento</h2></div>
@@ -401,6 +415,10 @@ export function Laboratorio() {
             <span>Unidades SI · Simulação numérica aproximada</span>
           </footer>
         </main>
+      </div>
+      </div>
+      <div hidden={guiaAtiva !== "looping"}>
+        {loopingVisitado && <Looping ativo={guiaAtiva === "looping"} />}
       </div>
       <DialogoRoteiros
         aberto={roteirosAbertos}

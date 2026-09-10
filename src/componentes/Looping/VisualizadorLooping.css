@@ -1,0 +1,309 @@
+.loop-visualizador {
+  overflow: hidden;
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #dae2dc;
+  border-radius: 12px;
+}
+
+.loop-vista-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid #e7ece8;
+}
+
+.loop-vista-legenda,
+.loop-vista-legenda > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loop-vista-legenda {
+  gap: 18px;
+  color: #526459;
+  font-size: 12px;
+}
+
+.loop-vista-legenda i {
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.loop-vista-amostra-linha {
+  width: 19px;
+  height: 3px;
+  border-radius: 2px;
+  background: #34786a;
+}
+
+.loop-vista-amostra-particula {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.loop-vista-botoes,
+.loop-vista-zoom {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #e0e7e2;
+  background: #f8faf8;
+  border-radius: 7px;
+}
+
+.loop-vista-botoes button,
+.loop-vista-zoom button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 31px;
+  padding: 5px 9px;
+  color: #526459;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.loop-vista-botoes button:hover,
+.loop-vista-zoom button:hover {
+  background: #e9f1ec;
+}
+
+.loop-vista-botoes button[aria-pressed="true"] {
+  color: #225f50;
+  background: #e4eee8;
+}
+
+.loop-vista-botoes button:focus-visible,
+.loop-vista-zoom button:focus-visible {
+  outline: 2px solid #34786a;
+  outline-offset: 2px;
+}
+
+.loop-vista-botoes button:disabled,
+.loop-vista-zoom button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.loop-vista-botoes button[aria-pressed="true"]:disabled {
+  opacity: 1;
+}
+
+.loop-vista-botoes svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.loop-vista-canvas {
+  position: relative;
+  background: linear-gradient(160deg, #fdfefd, #f7faf8);
+}
+
+.loop-vista-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 280px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.loop-vista-svg:focus-visible {
+  outline: 2px solid #34786a;
+  outline-offset: -3px;
+}
+
+.loop-vista-svg[data-modo="orbitar"] {
+  cursor: grab;
+}
+
+.loop-vista-svg[data-modo="orbitar"]:active {
+  cursor: grabbing;
+}
+
+.loop-vista-svg[data-modo="desenhar"] {
+  cursor: crosshair;
+}
+
+.loop-vista-svg[data-modo="selecionar"] {
+  cursor: pointer;
+}
+
+.loop-vista-grade {
+  fill: none;
+  stroke: #dfe7e1;
+  stroke-width: 1;
+}
+
+.loop-vista-eixos {
+  fill: none;
+  stroke: #9eafa4;
+  stroke-width: 1.15;
+}
+
+.loop-vista-segmento,
+.loop-vista-particula,
+.loop-vista-marcas {
+  pointer-events: none;
+}
+
+.loop-vista-segmento {
+  stroke-linecap: round;
+}
+
+.loop-vista-marcas {
+  font-family: var(--mono, "SFMono-Regular", Consolas, monospace);
+  font-size: 11px;
+  fill: #78897e;
+  paint-order: stroke;
+  stroke: #fafcfb;
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.loop-vista-rotulo-eixo {
+  fill: #4d6657;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.loop-vista-nos circle {
+  fill: #fff;
+  stroke: #34786a;
+  stroke-width: 1.1;
+}
+
+.loop-vista-nos circle[data-selecionado="true"] {
+  fill: #174f42;
+  stroke: #fff;
+  stroke-width: 2.5;
+}
+
+.loop-vista-rascunho {
+  fill: none;
+  stroke: #236b58;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.loop-vista-projecao {
+  position: absolute;
+  top: 17px;
+  left: 19px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.loop-vista-projecao span {
+  color: #87958d;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+.loop-vista-projecao strong {
+  color: #506c5c;
+  font-family: var(--mono, "SFMono-Regular", Consolas, monospace);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.loop-vista-zoom {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  background: #ffffffed;
+}
+
+.loop-vista-zoom button {
+  min-width: 31px;
+  font-size: 19px;
+}
+
+.loop-vista-zoom .loop-vista-enquadrar {
+  padding-inline: 7px;
+  font-size: 10px;
+}
+
+.loop-vista-rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  min-height: 47px;
+  padding: 11px 18px;
+  border-top: 1px solid #e7ece8;
+  color: #6e8074;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.loop-vista-rodape p {
+  margin: 0;
+}
+
+.loop-vista-rodape > span {
+  flex-shrink: 0;
+  font-family: var(--mono, "SFMono-Regular", Consolas, monospace);
+  font-size: 10px;
+}
+
+@media (max-width: 620px) {
+  .loop-vista-toolbar {
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .loop-vista-legenda {
+    flex: 1 0 100%;
+    justify-content: center;
+  }
+
+  .loop-vista-botoes {
+    width: 100%;
+  }
+
+  .loop-vista-botoes button {
+    flex: 1;
+    min-height: 35px;
+  }
+
+  .loop-vista-projecao {
+    top: 12px;
+    left: 13px;
+  }
+
+  .loop-vista-projecao span {
+    font-size: 8px;
+  }
+
+  .loop-vista-rodape {
+    align-items: flex-start;
+    padding-inline: 13px;
+  }
+
+  .loop-vista-rodape > span {
+    display: none;
+  }
+}
