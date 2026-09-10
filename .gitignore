@@ -1,0 +1,33 @@
+# Dependências
+node_modules/
+
+# Build e saídas geradas
+dist/
+build/
+
+# Cache
+.vite/
+.turbo/
+.eslintcache
+node_modules/.cache/
+
+# TypeScript
+*.tsbuildinfo
+node_modules/.tmp/
+
+# Ambiente local
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Sistema operacional e editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

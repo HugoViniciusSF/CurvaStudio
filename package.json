@@ -1,0 +1,32 @@
+{
+  "name": "simulador-dinamica-curvas",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -b && vite build",
+    "test": "node --test scripts/testar-expressoes.mjs scripts/testar-fisica.mjs scripts/testar-simulacao.mjs",
+    "preview": "vite preview --host 127.0.0.1",
+    "check": "tsc -b"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.3.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.8.0",
+    "vite": "^7.0.0"
+  },
+  "description": "Laboratório interativo para estudar o movimento e a energia de uma partícula em trajetórias matemáticas.",
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
