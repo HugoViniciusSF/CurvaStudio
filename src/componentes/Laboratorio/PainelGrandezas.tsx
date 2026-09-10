@@ -10,7 +10,10 @@ interface PropriedadesMetrica {
   cor?: string;
 }
 
-export function PainelGrandezas({ metricas }: { metricas: GrandezasFisicas }) {
+export function PainelGrandezas({
+  metricas,
+  descricaoVelocidade = "Ao longo da curva · sinal indica o sentido",
+}: { metricas: GrandezasFisicas; descricaoVelocidade?: string }) {
   return (
     <section className="metrics-strip" aria-label="Grandezas instantâneas">
       <Metrica
@@ -18,7 +21,7 @@ export function PainelGrandezas({ metricas }: { metricas: GrandezasFisicas }) {
         simbolo="v"
         valor={metricas.velocidade}
         unidade="m/s"
-        descricao="Ao longo da curva · sinal indica o sentido"
+        descricao={descricaoVelocidade}
       />
       <Metrica
         titulo="Altura"

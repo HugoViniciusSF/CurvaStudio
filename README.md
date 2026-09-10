@@ -17,7 +17,7 @@ Há duas guias independentes: **Laboratório**, para trajetórias `y = f(x)` com
 - Indicadores de velocidade, altura e energias cinética, potencial e mecânica.
 - Gráficos temporais de energia e velocidade, tabela de amostras e exportação em CSV.
 - Roteiros de estudo sobre conservação de energia, dissipação e gravidade.
-- Guia **Looping 3D** com rampa, looping e saída, desenho livre, edição de coordenadas, câmera rotacionável e exportação das três coordenadas.
+- Guia **Looping 3D** com desenho e edição de coordenadas, câmera rotacionável e modos de partícula presa ou solta, com desprendimento e voo sob a gravidade.
 
 ## Executar localmente
 
@@ -137,7 +137,7 @@ O modelo adota atrito com força normal aproximada e não inclui rolamento, desp
 
 Acesse **Looping 3D** na navegação superior. A trajetória usa uma sequência ordenada de pontos, permitindo voltar sobre `x`, formar voltas e separar trechos pela profundidade `z`. Nesta guia, `x` é a coordenada horizontal, `y` é a altura e `z` é a profundidade, todas em metros.
 
-O modelo inicial tem raio de **2 m**, altura de partida de **6 m**, profundidade de **1,2 m**, massa de **12 kg**, gravidade de **9,81 m/s²** e velocidade inicial nula.
+O modelo inicial tem raio de **2 m**, altura de partida de **6 m**, profundidade de **1,2 m**, massa de **12 kg**, gravidade de **9,81 m/s²**, velocidade inicial nula e partícula **Presa**.
 
 | Controle | Faixa na interface |
 | --- | --- |
@@ -148,25 +148,35 @@ O modelo inicial tem raio de **2 m**, altura de partida de **6 m**, profundidade
 | Massa | 0,01 a 1.000 kg |
 | Gravidade | 0 a 100 m/s² |
 | Velocidade inicial | 0 a 1.000 m/s |
+| Vínculo com a pista | Presa ou solta |
 
-1. Use **Completar o looping** para partir de `3R` ou **Observar o retorno** para partir de `1,4R`. Ambos usam `g = 9,81 m/s²` e `v₀ = 0`.
+1. Use **Partida a 3R** ou **Partida a 1,4R** para comparar energias iniciais. Ambos usam `g = 9,81 m/s²` e `v₀ = 0`, preservando raio, profundidade, massa e vínculo. **Testar 2,4R** e **Testar 2,5R** preparam a comparação do contato: também zeram a profundidade e selecionam **Solta**.
 2. Para outra geometria, ajuste raio, altura e profundidade e clique em **Gerar looping**.
 3. Em **Orbitar**, arraste a cena para girar a vista. Os botões de vista e zoom alteram somente a visualização.
 4. Em **Desenhar**, arraste no plano `xy` da profundidade indicada em **Plano do desenho z**. Soltar o ponteiro aplica o novo traçado, substituindo o anterior. Use pelo menos quatro pontos; o desenho aceita até 1.000 pontos.
 5. Use **Editar pontos** para selecionar um ponto na cena ou na lista e alterar suas coordenadas `x`, `y` e `z`. Também é possível inserir e excluir pontos. **Distribuir profundidade** aplica uma variação gradual em `z` ao longo do traçado, a partir do plano de desenho e usando o valor do campo **Profundidade**.
 6. Clique em **Iniciar looping** e acompanhe as energias, a velocidade e a posição espacial. O ritmo varia de 0,25× a 30×, e o avanço manual solicita `1/120 s`.
 
-A partícula fica confinada a uma guia ideal **sem atrito, rotação ou perda de contato**. Em cada segmento retilíneo, o movimento usa a solução de aceleração tangencial constante `a = −g Δy/Δs`. A velocidade é calculada de acordo com a energia inicial: `v² = v₀² + 2g(y₀ − y)`. Assim, a conservação de `Em = ½mv² + mgy` faz parte do método. Este modelo é independente da integração RK4 usada no Laboratório.
+Escolha o **Vínculo com a pista** nas condições físicas:
 
-Se a energia for insuficiente para vencer uma subida, a partícula retorna. Ao atingir uma extremidade do percurso ou permanecer em repouso, o ensaio encerra. No looping gerado, `R` é o raio da projeção no plano `xy`, e o topo tem altura `2R`; a regra de contato `2,5R` de um looping circular plano não é aplicada à guia confinada.
+- **Presa**: a guia pode empurrar ou puxar a partícula. Ela pode completar um looping partindo de `2,4R`; uma reação normal negativa indica que a guia precisa puxá-la.
+- **Solta**: a pista só empurra no sentido de sustentação. Quando a continuação exigiria uma reação negativa, a partícula se desprende com a velocidade tangente à pista e segue em voo sob a gravidade. A cena marca o desprendimento e mostra o rastro do voo.
 
-O intervalo das amostras tem padrão de **0,05 s** e opções **0,025; 0,05; 0,1; 0,25; 0,5; 1 e 2 s**. Mudar o intervalo seleciona novamente os estados calculados. O início, o encerramento e os avanços manuais são preservados. A aba **Dados 3D** mostra as últimas oito amostras; **Exportar CSV 3D** salva toda a série selecionada em `curva-studio-looping-<data-hora>.csv`:
+O modelo não inclui atrito, rotação nem resistência do ar. Em cada segmento da pista, usa a solução de aceleração tangencial constante `a = −g Δy/Δs` e a relação energética `v² = v₀² + 2g(y₀ − y)`. No voo, usa as equações do movimento sob gravidade constante em `(x, y, z)`. A conservação de `Em = Ec + mgy` faz parte do método, independente da integração RK4 do Laboratório.
+
+Para um looping **plano e circular**, com partida do repouso, a condição mínima para manter contato é `H = 2,5R`: no topo, `v² = gR` e `N = 0`. Com `R = 1 m` e `H = 2,4 m`, a partícula solta se desprende antes do topo. O código calcula a reação local a partir da velocidade e da curvatura, sem impor um corte pela altura. Com profundidade variável, `R` é o raio da projeção em `xy`, e a regra plana não se aplica diretamente. A pista espacial adota uma orientação de sustentação e uma guia lateral ideais.
+
+Se a energia for insuficiente para vencer uma subida, a partícula pode retornar enquanto mantiver contato. O ensaio encerra ao atingir uma extremidade, permanecer em repouso ou sair da região de observação do voo. Não há colisão com o solo nem novo contato após o desprendimento, mesmo que o voo cruze a pista.
+
+O intervalo das amostras tem padrão de **0,05 s** e opções **0,025; 0,05; 0,1; 0,25; 0,5; 1 e 2 s**. Mudar o intervalo seleciona novamente os estados calculados. O início, o desprendimento, o encerramento e os avanços manuais são preservados. A aba **Dados 3D** mostra as últimas oito amostras, incluindo a normal e a fase do movimento; **Exportar CSV 3D** salva toda a série selecionada em `curva-studio-looping-<data-hora>.csv`:
 
 ```text
-tempo_s,distancia_m,x_m,y_m,z_m,velocidade_m_s,energia_cinetica_J,energia_potencial_J,energia_mecanica_J
+tempo_s,distancia_m,x_m,y_m,z_m,velocidade_m_s,energia_cinetica_J,energia_potencial_J,energia_mecanica_J,vx_m_s,vy_m_s,vz_m_s,forca_normal_N,fase
 ```
 
-`distancia_m` representa a coordenada `s` medida desde o início ao longo da trajetória; diminui no retorno e não é a distância total percorrida. O CSV usa UTF-8, vírgula entre colunas, ponto decimal e até 12 algarismos significativos. Desenhar, editar pontos, gerar a trajetória ou alterar as condições físicas reinicia somente os registros desta guia. Recarregar a página descarta os ensaios das duas guias.
+`distancia_m` representa a coordenada `s` desde o início da pista; diminui no retorno e fica constante em voo. Não é a distância total percorrida. `velocidade_m_s` tem sinal na pista e representa a rapidez em voo; `vx_m_s`, `vy_m_s` e `vz_m_s` indicam a direção espacial. `forca_normal_N` é a componente de sustentação, zero em voo. `fase` identifica `pista`, `voo` ou `voo_encerrado`.
+
+O CSV usa UTF-8, vírgula entre colunas, ponto decimal e até 12 algarismos significativos nos valores numéricos. Desenhar, editar pontos, gerar a trajetória ou alterar as condições físicas, inclusive o vínculo, reinicia somente os registros desta guia. Recarregar a página descarta os ensaios das duas guias.
 
 Consulte o [modelo físico e o roteiro de observação do looping](docs/LOOPING_3D.md), incluindo as diferenças entre conservação de energia e manutenção do contato.
 
@@ -182,7 +192,7 @@ O projeto utiliza **React, TypeScript, Vite, Material UI e SVG**.
 | `npm run build` | Verificar o TypeScript e gerar a aplicação em `dist/` |
 | `npm run preview` | Servir localmente a versão compilada, após o build |
 
-Os testes incluem soluções analíticas, conservação de energia, dissipação, velocidades de até 1.000 m/s, pausa, amostragem e exportação. As suítes do looping também verificam trajetórias em três dimensões, interseções, inversões, coordenadas no CSV e preservação do estado quando a guia fica inativa.
+Os testes incluem soluções analíticas, conservação de energia, dissipação, velocidades de até 1.000 m/s, pausa, amostragem e exportação. As suítes do looping também verificam trajetórias em três dimensões, interseções, inversões, o limiar de contato em `2,5R`, desprendimento, voo balístico, dados do CSV e preservação do estado quando a guia fica inativa.
 
 ```text
 src/
@@ -208,7 +218,8 @@ Os principais pontos de configuração são:
 | [roteiros.ts](src/componentes/Laboratorio/roteiros.ts) | Parâmetros dos roteiros de estudo. |
 | [EstadoSimulacao.ts](src/tipos/EstadoSimulacao.ts) | Estados, grandezas e estrutura das amostras. |
 | [Looping.tsx](src/componentes/Looping/Looping.tsx) | Controles, valores padrão e edição da guia 3D. |
-| [looping3d.ts](src/simulacao/looping3d.ts) | Geometria espacial, energia e eventos da guia ideal. |
+| [looping3d.ts](src/simulacao/looping3d.ts) | Geometria espacial, movimento na pista, desprendimento e voo. |
+| [contatoLooping3d.ts](src/simulacao/contatoLooping3d.ts) | Curvatura, orientação de apoio, normal e localização da perda de contato. |
 | [useLooping.ts](src/ganchos/useLooping.ts) | Reprodução independente, amostras e CSV 3D. |
 | [VisualizadorLooping.tsx](src/componentes/Looping/VisualizadorLooping.tsx) | Projeção, câmera, desenho e seleção de pontos no espaço. |
 

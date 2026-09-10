@@ -11,6 +11,13 @@ interface PropriedadesVisualizadorLooping {
   indiceSelecionado: number | null;
   aoSelecionarPonto: (indice: number) => void;
   aoDesenhar: (pontos: Ponto3D[]) => void;
+  rastroVoo?: Ponto3D[];
+  pontoDesprendimento?: Ponto3D | null;
+  emVoo?: boolean;
+  /** Previsão fixa do voo, incluindo seu ápice e fim, para manter a câmera estável. */
+  pontosEnquadramento?: Ponto3D[];
+  /** Menor coordenada y observada, em metros. Não representa uma superfície de colisão. */
+  limiteObservacao?: number;
 }
 
 interface Camera {
@@ -31,6 +38,7 @@ const CAMERA_FRONTAL: Camera = { azimute: 0, elevacao: 0 };
 const CAMERA_LATERAL: Camera = { azimute: Math.PI / 2, elevacao: 0 };
 const MAXIMO_PONTOS_DESENHO = 1_000;
 const LIMITE_COORDENADA = 100;
+const PONTOS_VAZIOS: Ponto3D[] = [];
 const formatador = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
 
 function limitar(valor: number, minimo: number, maximo: number) {
@@ -84,6 +92,11 @@ export function VisualizadorLooping({
   indiceSelecionado,
   aoSelecionarPonto,
   aoDesenhar,
+  rastroVoo = PONTOS_VAZIOS,
+  pontoDesprendimento = null,
+  emVoo = false,
+  pontosEnquadramento = PONTOS_VAZIOS,
+  limiteObservacao,
 }: PropriedadesVisualizadorLooping) {
   const id = useId().replace(/:/g, "");
   const [camera, definirCamera] = useState<Camera>(CAMERA_ISOMETRICA);
@@ -109,11 +122,14 @@ export function VisualizadorLooping({
   const limites = useMemo(() => {
     const minimo = { x: 0, y: 0, z: -1 };
     const maximo = { x: 0, y: 0, z: 1 };
-    for (const ponto of pontos) {
+    for (const ponto of [...pontos, ...pontosEnquadramento]) {
       for (const eixo of ["x", "y", "z"] as const) {
         minimo[eixo] = Math.min(minimo[eixo], ponto[eixo]);
         maximo[eixo] = Math.max(maximo[eixo], ponto[eixo]);
       }
+    }
+    if (limiteObservacao !== undefined && Number.isFinite(limiteObservacao)) {
+      minimo.y = Math.min(minimo.y, limiteObservacao);
     }
     for (const eixo of ["x", "y", "z"] as const) {
       const folga = Math.max((maximo[eixo] - minimo[eixo]) * 0.08, 1);
@@ -126,7 +142,7 @@ export function VisualizadorLooping({
       z: (minimo.z + maximo.z) / 2,
     };
     return { minimo, maximo, centro };
-  }, [pontos]);
+  }, [pontos, pontosEnquadramento, limiteObservacao]);
 
   const projecao = useMemo(() => {
     const vertices: PontoProjetado[] = [];
@@ -178,10 +194,45 @@ export function VisualizadorLooping({
       };
     }).sort((a, b) => a.profundidade - b.profundidade);
   }, [projetados]);
-  const indiceParticula = camadasTrajetoria.findIndex((camada) => camada.profundidade > posicaoProjetada.profundidade);
-  const camadas = camadasTrajetoria.map((camada) => camada.elemento);
+  const camadasCena = useMemo(() => {
+    const rastroProjetado = rastroVoo.map(projecao.ponto);
+    let comprimentoRastro = 0;
+    const camadasVoo = rastroProjetado.slice(1).map((fim, indice) => {
+      const inicio = rastroProjetado[indice];
+      const deslocamentoTracejado = -comprimentoRastro;
+      comprimentoRastro += Math.hypot(fim.x - inicio.x, fim.y - inicio.y);
+      return {
+        profundidade: (inicio.profundidade + fim.profundidade) / 2,
+        elemento: <line
+          key={`voo-${indice}`}
+          className="loop-vista-rastro-voo"
+          x1={inicio.x}
+          y1={inicio.y}
+          x2={fim.x}
+          y2={fim.y}
+          strokeDashoffset={deslocamentoTracejado}
+        />,
+      };
+    });
+    const camadas = [...camadasTrajetoria, ...camadasVoo];
+    if (pontoDesprendimento) {
+      const ponto = projecao.ponto(pontoDesprendimento);
+      const rotuloAEsquerda = ponto.x > LARGURA * 0.72;
+      camadas.push({
+        profundidade: ponto.profundidade,
+        elemento: <g key="desprendimento" className="loop-vista-desprendimento">
+          <circle cx={ponto.x} cy={ponto.y} r={5.5} />
+          <text x={ponto.x + (rotuloAEsquerda ? -11 : 11)} y={ponto.y - 12}
+            textAnchor={rotuloAEsquerda ? "end" : "start"}>Desprendimento</text>
+        </g>,
+      });
+    }
+    return camadas.sort((a, b) => a.profundidade - b.profundidade);
+  }, [camadasTrajetoria, rastroVoo, pontoDesprendimento, projecao]);
+  const indiceParticula = camadasCena.findIndex((camada) => camada.profundidade > posicaoProjetada.profundidade);
+  const camadas = camadasCena.map((camada) => camada.elemento);
   camadas.splice(indiceParticula < 0 ? camadas.length : indiceParticula, 0,
-    <g key="particula" className="loop-vista-particula">
+    <g key="particula" className="loop-vista-particula" data-em-voo={emVoo}>
       <circle cx={posicaoProjetada.x} cy={posicaoProjetada.y} r={12} fill={corParticula} opacity={0.12} />
       <circle cx={posicaoProjetada.x} cy={posicaoProjetada.y} r={7} fill={corParticula} stroke="#fff" strokeWidth={2.5} />
     </g>);
@@ -330,8 +381,9 @@ export function VisualizadorLooping({
     <div className="loop-visualizador">
       <div className="loop-vista-toolbar">
         <div className="loop-vista-legenda">
-          <span><i className="loop-vista-amostra-linha" />Trajetória 3D</span>
-          <span><i className="loop-vista-amostra-particula" style={{ backgroundColor: corParticula }} />Partícula</span>
+          <span><i className="loop-vista-amostra-linha" aria-hidden="true" />Pista 3D</span>
+          <span><i className="loop-vista-amostra-particula" aria-hidden="true" style={{ backgroundColor: corParticula }} />{emVoo ? "Partícula em voo" : "Partícula"}</span>
+          {(emVoo || rastroVoo.length > 1) && <span><i className="loop-vista-amostra-voo" aria-hidden="true" />Voo livre</span>}
         </div>
         <div className="loop-vista-botoes" role="group" aria-label="Vista da trajetória">
           <button type="button" title="Vista isométrica" aria-label="Vista isométrica" aria-pressed={vistaIsometrica} disabled={modo === "desenhar"} onClick={() => definirCamera(CAMERA_ISOMETRICA)}>
@@ -366,6 +418,9 @@ export function VisualizadorLooping({
           <desc id={`${id}-descricao`}>
             Projeção ortográfica tridimensional em metros, com o eixo y vertical. {instrucao}
             Partícula em x = {formatador.format(posicao.x)}, y = {formatador.format(posicao.y)} e z = {formatador.format(posicao.z)} metros.
+            {emVoo ? " A partícula se desprendeu da pista e está em voo livre." : " A partícula está sobre a pista."}
+            {rastroVoo.length > 1 ? " A linha contínua verde representa a pista; a linha tracejada âmbar mostra o trajeto em voo livre." : ""}
+            {pontoDesprendimento ? ` Desprendimento em x = ${formatador.format(pontoDesprendimento.x)}, y = ${formatador.format(pontoDesprendimento.y)} e z = ${formatador.format(pontoDesprendimento.z)} metros.` : ""}
             {pontoSelecionado ? ` Ponto ${indiceAtivo! + 1} selecionado.` : ""}
           </desc>
           <defs>

@@ -50,7 +50,7 @@ const compilado = await build({
   }],
 });
 const {
-  useLooping, prepararTrajetoria3D, exportarCSVLooping,
+  useLooping, prepararTrajetoria3D, criarTrajetoriaLooping, exportarCSVLooping, faseLooping,
   PASSO_LOOPING, INTERVALOS_LOOPING, contexto,
 } = await import(`data:text/javascript;base64,${Buffer.from(compilado.outputFiles[0].text).toString('base64')}`);
 
@@ -292,16 +292,149 @@ test('looping: CSV exporta coordenadas espaciais, unidades e energias das mesmas
   const simulacao = montar({ gravidade: 10 });
   simulacao.reproduzir();
   const linhas = exportarCSVLooping(simulacao.atual.amostras).trim().split('\n');
-  assert.equal(linhas[0], 'tempo_s,distancia_m,x_m,y_m,z_m,velocidade_m_s,energia_cinetica_J,energia_potencial_J,energia_mecanica_J');
+  assert.equal(linhas[0], 'tempo_s,distancia_m,x_m,y_m,z_m,velocidade_m_s,energia_cinetica_J,energia_potencial_J,energia_mecanica_J,vx_m_s,vy_m_s,vz_m_s,forca_normal_N,fase');
   assert.equal(linhas.length, simulacao.atual.amostras.length + 1);
-  assert.deepEqual(linhas.at(-1).split(',').map(Number), [1, 3, 1.8, 2, 3.4, 3, 54, 240, 294]);
+  const ultima = linhas.at(-1).split(',');
+  assert.equal(ultima.pop(), 'pista');
+  assert.deepEqual(ultima.map(Number), [1, 3, 1.8, 2, 3.4, 3, 54, 240, 294, 1.8, 0, 2.4, 120]);
   linhas.slice(1).forEach((linha, indice) => {
-    const valores = linha.split(',').map(Number);
+    const campos = linha.split(',');
+    assert.equal(campos.pop(), 'pista');
+    const valores = campos.map(Number);
     const estado = simulacao.atual.amostras[indice];
     const esperados = [estado.tempo, estado.distancia, estado.posicao.x, estado.posicao.y, estado.posicao.z,
-      estado.velocidade, estado.energiaCinetica, estado.energiaPotencial, estado.energiaMecanica];
+      estado.velocidade, estado.energiaCinetica, estado.energiaPotencial, estado.energiaMecanica,
+      estado.velocidadeVetor.x, estado.velocidadeVetor.y, estado.velocidadeVetor.z, estado.forcaNormal];
     valores.forEach((valor, coluna) => perto(valor, esperados[coluna]));
+    perto(estado.forcaNormal, 12 * 10);
   });
+});
+
+test('looping: partícula solta registra desprendimento exato, voo e encerramento no CSV', () => {
+  const massa = 12;
+  const gravidade = 9.81;
+  const pontos = criarTrajetoriaLooping({ raio: 1, alturaInicial: 2.4, profundidade: 0 });
+  const simulacao = montar({ massa, gravidade, velocidadeInicial: 0, modoContato: 'solta' }, pontos);
+  assert.equal(faseLooping(simulacao.atual.estado), 'pista');
+  simulacao.chamar('alterarIntervalo', 0.5);
+  simulacao.reproduzir(60, 8);
+  const final = simulacao.atual;
+  assert.equal(final.erro, '');
+  assert.equal(final.estado.estado, 'queda_encerrada');
+  assert.equal(faseLooping(final.estado), 'voo_encerrado');
+  assert.equal(final.executando, false);
+  assert.equal(simulacao.quadrosAgendados, 0);
+  const evento = final.estado.desprendimento;
+  assert.ok(evento);
+  assert.ok(evento.posicao.y > 1 && evento.posicao.y < 2, 'desprendimento deve ocorrer antes do topo');
+  const registroEvento = final.amostras.find(amostra => amostra.tempo === evento.tempo);
+  assert.ok(registroEvento, 'o instante exato do desprendimento deve ser uma amostra extra');
+  assert.equal(registroEvento.forcaNormal, 0);
+  assert.equal(faseLooping(registroEvento), 'voo');
+  assert.deepEqual(registroEvento.posicao, evento.posicao);
+  assert.deepEqual(registroEvento.velocidadeVetor, evento.velocidade);
+  perto(registroEvento.distancia, evento.distancia);
+  assert.equal(final.amostras.at(-1), final.estado);
+  assert.deepEqual(final.rastroVoo[0], evento.posicao);
+  assert.deepEqual(final.rastroVoo.at(-1), final.estado.posicao);
+  assert.ok(final.rastroVoo.length > final.amostras.length * 3, 'o rastro mantém a cadência de integração');
+
+  for (const amostra of final.amostras) {
+    perto(amostra.energiaCinetica, massa * Math.hypot(...Object.values(amostra.velocidadeVetor)) ** 2 / 2);
+    perto(amostra.energiaPotencial, massa * gravidade * amostra.posicao.y);
+    perto(amostra.energiaMecanica, massa * gravidade * 2.4, 1e-7);
+    if (faseLooping(amostra) === 'pista') continue;
+    const dt = amostra.tempo - evento.tempo;
+    perto(amostra.posicao.x, evento.posicao.x + evento.velocidade.x * dt);
+    perto(amostra.posicao.y, evento.posicao.y + evento.velocidade.y * dt - gravidade * dt ** 2 / 2);
+    perto(amostra.posicao.z, evento.posicao.z + evento.velocidade.z * dt);
+    perto(amostra.velocidadeVetor.x, evento.velocidade.x);
+    perto(amostra.velocidadeVetor.y, evento.velocidade.y - gravidade * dt);
+    perto(amostra.velocidadeVetor.z, evento.velocidade.z);
+    assert.equal(amostra.forcaNormal, 0);
+  }
+  const linhas = exportarCSVLooping(final.amostras).trim().split('\n').slice(1);
+  linhas.forEach((linha, indice) => {
+    const campos = linha.split(',');
+    const amostra = final.amostras[indice];
+    assert.equal(campos.length, 14);
+    assert.equal(campos[13], faseLooping(amostra));
+    const valores = campos.slice(0, 13).map(Number);
+    assert.ok(valores.every(Number.isFinite));
+    perto(valores[6], massa * Math.hypot(...valores.slice(9, 12)) ** 2 / 2);
+    perto(valores[7], massa * gravidade * valores[3]);
+    perto(valores[8], valores[6] + valores[7]);
+    if (campos[13] !== 'pista') assert.equal(valores[12], 0);
+  });
+  for (const intervalo of [2, 0.025, 0.5]) {
+    simulacao.chamar('alterarIntervalo', intervalo);
+    assert.equal(simulacao.atual.estado, final.estado);
+    assert.equal(simulacao.atual.rastroVoo, final.rastroVoo);
+    assert.equal(simulacao.atual.amostras.find(amostra => amostra.tempo === evento.tempo), registroEvento);
+    assert.equal(simulacao.atual.amostras.at(-1), final.estado);
+    const tempos = instantes(simulacao);
+    assert.ok(tempos.every((tempo, indice) => indice === 0 || tempo > tempos[indice - 1]));
+  }
+});
+
+test('looping: guia inativa preserva o voo e o rastro, retomando sem contar o tempo oculto', () => {
+  const pontos = criarTrajetoriaLooping({ raio: 1, alturaInicial: 2.4, profundidade: 0 });
+  const simulacao = montar({ gravidade: 9.81, velocidadeInicial: 0, modoContato: 'solta' }, pontos);
+  simulacao.chamar('alternar');
+  simulacao.quadro(0);
+  for (let quadro = 1; quadro <= 600 && faseLooping(simulacao.atual.estado) === 'pista'; quadro++) {
+    simulacao.quadro(quadro * 1000 / 60);
+  }
+  const anterior = simulacao.atual;
+  assert.equal(faseLooping(anterior.estado), 'voo');
+  assert.equal(anterior.executando, true);
+  assert.ok(anterior.rastroVoo.length >= 2);
+  const rastroOriginal = structuredClone(anterior.rastroVoo);
+  simulacao.ativar(false);
+  simulacao.quadro(10000);
+  assert.equal(simulacao.atual.executando, false);
+  assert.equal(simulacao.quadrosAgendados, 0);
+  assert.equal(simulacao.atual.estado, anterior.estado);
+  assert.equal(simulacao.atual.amostras, anterior.amostras);
+  assert.equal(simulacao.atual.rastroVoo, anterior.rastroVoo);
+  simulacao.chamar('alterarIntervalo', 2);
+  assert.equal(simulacao.atual.rastroVoo, anterior.rastroVoo);
+  assert.ok(simulacao.atual.amostras.some(amostra => amostra.tempo === anterior.estado.desprendimento.tempo));
+  simulacao.ativar(true);
+  simulacao.quadro(20000);
+  assert.equal(simulacao.atual.executando, false);
+  assert.equal(simulacao.atual.estado, anterior.estado);
+  simulacao.chamar('alternar');
+  simulacao.quadro(30000);
+  assert.equal(simulacao.atual.estado, anterior.estado);
+  simulacao.quadro(30050);
+  perto(simulacao.atual.estado.tempo, anterior.estado.tempo + 0.05);
+  assert.ok(simulacao.atual.rastroVoo.length > anterior.rastroVoo.length);
+  assert.deepEqual(anterior.rastroVoo, rastroOriginal, 'quadros posteriores não modificam snapshots do rastro');
+});
+
+test('looping: modo de contato reinicia a execução e remove o voo anterior', () => {
+  const pontos = criarTrajetoriaLooping({ raio: 1, alturaInicial: 2.4, profundidade: 0 });
+  const simulacao = montar({ gravidade: 9.81, velocidadeInicial: 0, modoContato: 'solta' }, pontos);
+  simulacao.chamar('alterarIntervalo', 0.25);
+  simulacao.chamar('definirRitmo', 2);
+  simulacao.reproduzir(60, 8);
+  assert.equal(simulacao.atual.estado.estado, 'queda_encerrada');
+  const rastroAnterior = simulacao.atual.rastroVoo;
+  simulacao.configurar({ modoContato: 'presa' });
+  assert.equal(simulacao.atual.estado.tempo, 0);
+  assert.equal(simulacao.atual.estado.desprendimento, undefined);
+  assert.equal(faseLooping(simulacao.atual.estado), 'pista');
+  assert.deepEqual(simulacao.atual.rastroVoo, []);
+  assert.ok(rastroAnterior.length > 0);
+  assert.equal(simulacao.atual.executando, false);
+  assert.equal(simulacao.atual.intervalo, 0.25);
+  assert.equal(simulacao.atual.ritmo, 2);
+  conferirInstantes(simulacao, [0]);
+  simulacao.reproduzir(60, 8);
+  assert.equal(simulacao.atual.estado.estado, 'concluido');
+  assert.equal(faseLooping(simulacao.atual.estado), 'pista');
+  assert.deepEqual(simulacao.atual.rastroVoo, []);
 });
 
 test('looping: indicadores e amostras de uma rampa 3D concordam com solução analítica', () => {

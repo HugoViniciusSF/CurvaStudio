@@ -24,6 +24,7 @@
 }
 
 .loop-vista-legenda {
+  flex-wrap: wrap;
   gap: 18px;
   color: #526459;
   font-size: 12px;
@@ -45,6 +46,11 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
+}
+
+.loop-vista-amostra-voo {
+  width: 21px;
+  border-top: 2px dashed #aa6825;
 }
 
 .loop-vista-botoes,
@@ -160,6 +166,8 @@
 }
 
 .loop-vista-segmento,
+.loop-vista-rastro-voo,
+.loop-vista-desprendimento,
 .loop-vista-particula,
 .loop-vista-marcas {
   pointer-events: none;
@@ -167,6 +175,29 @@
 
 .loop-vista-segmento {
   stroke-linecap: round;
+}
+
+.loop-vista-rastro-voo {
+  fill: none;
+  stroke: #aa6825;
+  stroke-width: 2.2;
+  stroke-dasharray: 7 5;
+}
+
+.loop-vista-desprendimento circle {
+  fill: #fffaf2;
+  stroke: #aa6825;
+  stroke-width: 2;
+}
+
+.loop-vista-desprendimento text {
+  fill: #855017;
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: #fafcfb;
+  stroke-width: 4;
+  stroke-linejoin: round;
 }
 
 .loop-vista-marcas {

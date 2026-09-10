@@ -1,3 +1,8 @@
+import {
+  contatoNoSegmento, escalar, prepararGeometriaContato, primeiraPerdaDeContato,
+  type GeometriaContato3D,
+} from './contatoLooping3d';
+
 export interface Ponto3D {
   x: number;
   y: number;
@@ -8,18 +13,27 @@ export interface Trajetoria3D {
   pontos: Ponto3D[];
   comprimentosAcumulados: number[];
   comprimentoTotal: number;
+  geometriaContato: GeometriaContato3D;
 }
 
 export interface ConfiguracaoLooping {
   massa: number;
   gravidade: number;
   velocidadeInicial: number;
+  modoContato?: 'presa' | 'solta';
 }
 
 export interface ParametrosLooping {
   raio: number;
   alturaInicial: number;
   profundidade: number;
+}
+
+export interface DesprendimentoLooping {
+  tempo: number;
+  distancia: number;
+  posicao: Ponto3D;
+  velocidade: Ponto3D;
 }
 
 export interface EstadoLooping {
@@ -30,7 +44,10 @@ export interface EstadoLooping {
   energiaCinetica: number;
   energiaPotencial: number;
   energiaMecanica: number;
-  estado: 'pronto' | 'em_movimento' | 'concluido' | 'retornou' | 'repouso';
+  velocidadeVetor: Ponto3D;
+  forcaNormal: number;
+  desprendimento?: DesprendimentoLooping;
+  estado: 'pronto' | 'em_movimento' | 'concluido' | 'retornou' | 'repouso' | 'desprendida' | 'queda_encerrada';
 }
 
 function exigirFinitos(valores: number[], mensagem: string) {
@@ -43,6 +60,9 @@ function validarConfiguracao(configuracao: ConfiguracaoLooping) {
     'Os parâmetros físicos devem estar dentro da escala numérica.');
   if (massa <= 0 || gravidade < 0) {
     throw new Error('Use massa positiva e gravidade maior ou igual a zero.');
+  }
+  if (configuracao.modoContato !== undefined && !['presa', 'solta'].includes(configuracao.modoContato)) {
+    throw new Error('O modo de contato deve ser presa ou solta.');
   }
 }
 
@@ -94,7 +114,8 @@ export function prepararTrajetoria3D(entrada: readonly Ponto3D[]): Trajetoria3D 
     comprimentosAcumulados.push(comprimentoTotal);
   }
   if (pontos.length < 2) throw new Error('Desenhe pelo menos dois pontos distintos para criar uma trajetória.');
-  return { pontos, comprimentosAcumulados, comprimentoTotal };
+  return { pontos, comprimentosAcumulados, comprimentoTotal,
+    geometriaContato: prepararGeometriaContato(pontos, comprimentosAcumulados) };
 }
 
 // Em um vértice, o segmento escolhido pertence ao sentido do movimento.
@@ -145,9 +166,65 @@ function montarEstado(
   const energiaCinetica = configuracao.massa * (velocidade ** 2 / 2);
   const energiaPotencial = configuracao.massa * (configuracao.gravidade * posicao.y);
   const energiaMecanica = energiaCinetica + energiaPotencial;
-  exigirFinitos([tempo, distancia, velocidade, energiaCinetica, energiaPotencial, energiaMecanica],
+  const indice = indiceSegmento(trajetoria, distancia, velocidade || 1);
+  const acumulados = trajetoria.comprimentosAcumulados;
+  const fracao = (distancia - acumulados[indice]) / (acumulados[indice + 1] - acumulados[indice]);
+  const contato = contatoNoSegmento(trajetoria.geometriaContato, indice, fracao, velocidade ** 2, configuracao.gravidade);
+  const velocidadeVetor = escalar(contato.tangente, velocidade);
+  const forcaNormal = configuracao.massa * contato.aceleracaoNormal;
+  exigirFinitos([tempo, distancia, velocidade, energiaCinetica, energiaPotencial, energiaMecanica, forcaNormal,
+    velocidadeVetor.x, velocidadeVetor.y, velocidadeVetor.z],
     'O estado ou as energias excedem a escala numérica.');
-  return { tempo, distancia, velocidade, posicao, energiaCinetica, energiaPotencial, energiaMecanica, estado };
+  return { tempo, distancia, velocidade, posicao, energiaCinetica, energiaPotencial, energiaMecanica,
+    estado, velocidadeVetor, forcaNormal };
+}
+
+/** Plano inferior de observação: encerrar o voo não representa impacto ou colisão. */
+export function limiteObservacaoLooping(trajetoria: Trajetoria3D): number {
+  let minimo = Infinity;
+  let maximo = -Infinity;
+  for (const ponto of trajetoria.pontos) { minimo = Math.min(minimo, ponto.y); maximo = Math.max(maximo, ponto.y); }
+  return minimo - Math.max(2, (maximo - minimo) * 0.5);
+}
+
+export function duracaoVooLooping(trajetoria: Trajetoria3D, configuracao: ConfiguracaoLooping, evento: DesprendimentoLooping): number {
+  if (configuracao.gravidade === 0) return 5;
+  const altura = evento.posicao.y - limiteObservacaoLooping(trajetoria);
+  const vy = evento.velocidade.y;
+  const raiz = Math.hypot(vy, Math.sqrt(2 * configuracao.gravidade * altura));
+  return vy >= 0 ? (vy + raiz) / configuracao.gravidade : 2 * altura / (raiz - vy);
+}
+
+export function posicaoNoVooLooping(evento: DesprendimentoLooping, gravidade: number, duracao: number): Ponto3D {
+  return { x: evento.posicao.x + evento.velocidade.x * duracao,
+    y: evento.posicao.y + evento.velocidade.y * duracao - gravidade * duracao ** 2 / 2,
+    z: evento.posicao.z + evento.velocidade.z * duracao };
+}
+
+function montarEstadoVoo(configuracao: ConfiguracaoLooping, evento: DesprendimentoLooping, duracao: number, encerrado: boolean): EstadoLooping {
+  const posicao = posicaoNoVooLooping(evento, configuracao.gravidade, duracao);
+  const velocidadeVetor = { ...evento.velocidade, y: evento.velocidade.y - configuracao.gravidade * duracao };
+  const velocidade = Math.hypot(velocidadeVetor.x, velocidadeVetor.y, velocidadeVetor.z);
+  const energiaCinetica = configuracao.massa * velocidade ** 2 / 2;
+  const energiaPotencial = configuracao.massa * configuracao.gravidade * posicao.y;
+  const energiaMecanica = energiaCinetica + energiaPotencial;
+  const tempo = evento.tempo + duracao;
+  exigirFinitos([tempo, posicao.x, posicao.y, posicao.z, velocidade, energiaCinetica, energiaPotencial, energiaMecanica],
+    'O voo ou as energias excedem a escala numérica.');
+  return { tempo, distancia: evento.distancia, velocidade, posicao, energiaCinetica, energiaPotencial,
+    energiaMecanica, velocidadeVetor, forcaNormal: 0, desprendimento: evento,
+    estado: encerrado ? 'queda_encerrada' : 'desprendida' };
+}
+
+/** Reconstrói a amostra do instante exato de saída, mesmo quando o passo terminou já em voo. */
+export function estadoNoDesprendimento(estado: EstadoLooping, configuracao: ConfiguracaoLooping): EstadoLooping | null {
+  return estado.desprendimento ? montarEstadoVoo(configuracao, estado.desprendimento, 0, false) : null;
+}
+
+function avancarVoo(trajetoria: Trajetoria3D, configuracao: ConfiguracaoLooping, evento: DesprendimentoLooping, tempo: number): EstadoLooping {
+  const duracaoMaxima = duracaoVooLooping(trajetoria, configuracao, evento);
+  const duracao = Math.min(duracaoMaxima, Math.max(0, tempo - evento.tempo));
+  return montarEstadoVoo(configuracao, evento, duracao, duracao >= duracaoMaxima);
 }
 
 export function criarEstadoLooping(trajetoria: Trajetoria3D, configuracao: ConfiguracaoLooping): EstadoLooping {
@@ -170,7 +247,8 @@ function velocidadePelaEnergia(
 }
 
 /**
- * Guia ideal confinada, sem atrito, rotação, colisões ou perda de contato.
+ * Guia ideal sem atrito ou rotação. No modo solta, o apoio não pode puxar:
+ * o primeiro cruzamento de N para valores negativos inicia voo balístico.
  * A trajetória é poligonal: em cada segmento, a = -g Δy/Δs é constante.
  * A solução s(t)=s0+v0t+at²/2 trata vértices, inversões e fronteiras no
  * instante exato. A reação da guia muda a direção, sem realizar trabalho.
@@ -184,7 +262,8 @@ export function avancarLooping(
   validarConfiguracao(configuracao);
   if (!Number.isFinite(dt) || dt < 0) throw new Error('O intervalo de simulação deve ser finito e não negativo.');
   exigirFinitos([anterior.tempo, anterior.distancia, anterior.velocidade], 'O estado anterior deve ser finito.');
-  if (dt === 0 || ['concluido', 'retornou', 'repouso'].includes(anterior.estado)) return anterior;
+  if (dt === 0 || ['concluido', 'retornou', 'repouso', 'queda_encerrada'].includes(anterior.estado)) return anterior;
+  if (anterior.desprendimento) return avancarVoo(trajetoria, configuracao, anterior.desprendimento, anterior.tempo + dt);
   if (anterior.distancia < 0 || anterior.distancia > trajetoria.comprimentoTotal) {
     throw new Error('O estado anterior deve pertencer à trajetória.');
   }
@@ -235,6 +314,31 @@ export function avancarLooping(
     // inversão coincidem, como no retorno ao ponto inicial com v = 0.
     const inverte = quadradoNaFronteira < -tolerancia;
     const tempoEvento = inverte ? tempoInversao : tempoFronteira;
+    if (configuracao.modoContato === 'solta') {
+      const duracaoTrecho = Math.min(restante, tempoEvento);
+      const acumulados = trajetoria.comprimentosAcumulados;
+      const comprimento = acumulados[indice + 1] - acumulados[indice];
+      const distanciaFinal = inverte || duracaoTrecho < tempoEvento
+        ? distancia + velocidade * duracaoTrecho + aceleracao * duracaoTrecho ** 2 / 2 : fronteira;
+      const alturaInicio = trajetoria.pontos[indice].y;
+      const dy = trajetoria.pontos[indice + 1].y - alturaInicio;
+      const fracao = primeiraPerdaDeContato(trajetoria.geometriaContato, indice,
+        Math.max(0, Math.min(1, (distancia - acumulados[indice]) / comprimento)),
+        Math.max(0, Math.min(1, (distanciaFinal - acumulados[indice]) / comprimento)),
+        quadradoInicial + 2 * configuracao.gravidade * (trajetoria.pontos[0].y - alturaInicio),
+        -2 * configuracao.gravidade * dy, configuracao.gravidade);
+      if (fracao !== null) {
+        const distanciaSaida = acumulados[indice] + comprimento * fracao;
+        const velocidadeSaida = velocidadePelaEnergia(trajetoria, configuracao, distanciaSaida, sentido);
+        const percurso = Math.abs(distanciaSaida - distancia);
+        const duracaoSaida = percurso === 0 ? 0 : 2 * percurso / (rapidez + Math.abs(velocidadeSaida));
+        const saida = montarEstado(trajetoria, configuracao, anterior.tempo + decorrido + duracaoSaida,
+          distanciaSaida, velocidadeSaida, 'desprendida');
+        const evento: DesprendimentoLooping = { tempo: saida.tempo, distancia: saida.distancia,
+          posicao: saida.posicao, velocidade: saida.velocidadeVetor };
+        return avancarVoo(trajetoria, configuracao, evento, anterior.tempo + dt);
+      }
+    }
     if (restante < tempoEvento) {
       distancia += velocidade * restante + aceleracao * restante ** 2 / 2;
       velocidade += aceleracao * restante;

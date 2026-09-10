@@ -5,6 +5,7 @@ import type { AmostraSimulacao } from "../../tipos/EstadoSimulacao";
 interface PropriedadesAnaliseTemporal {
   historico: AmostraSimulacao[];
   grandeza?: "energia" | "velocidade";
+  descricaoVelocidade?: string;
 }
 
 type CampoSerie = "energiaCinetica" | "energiaPotencial" | "energiaTotal" | "velocidade";
@@ -22,7 +23,7 @@ const SERIES_VELOCIDADE: Serie[] = [
 const AREA = { esquerda: 61, direita: 604, topo: 23, base: 149 };
 const FONTE_NUMEROS = "'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace";
 
-export const AnaliseTemporal = memo(function AnaliseTemporal({ historico, grandeza = "energia" }: PropriedadesAnaliseTemporal) {
+export const AnaliseTemporal = memo(function AnaliseTemporal({ historico, grandeza = "energia", descricaoVelocidade }: PropriedadesAnaliseTemporal) {
   const id = useId().replace(/:/g, "");
   const series = grandeza === "energia" ? SERIES_ENERGIA : SERIES_VELOCIDADE;
   const dados = useMemo(() => {
@@ -72,7 +73,7 @@ export const AnaliseTemporal = memo(function AnaliseTemporal({ historico, grande
   const marcasX = temEvolucao ? criarMarcas(0, dados.tempoFinal, 5) : [0];
   const marcasY = dados.quantidadeValida > 0 ? criarMarcas(dados.minimo, dados.maximo, 3) : [0];
   const unidade = grandeza === "energia" ? "E (J)" : "v (m/s)";
-  const descricao = grandeza === "energia" ? "Energias cinética, potencial e mecânica ao longo do tempo" : "Velocidade tangencial ao longo do tempo";
+  const descricao = grandeza === "energia" ? "Energias cinética, potencial e mecânica ao longo do tempo" : descricaoVelocidade ?? "Velocidade tangencial ao longo do tempo";
 
   return (
     <>
@@ -129,7 +130,7 @@ export const AnaliseTemporal = memo(function AnaliseTemporal({ historico, grande
       <div className="chart-legend">
         {series.map((serie) => <span key={serie.campo}>
           <i aria-hidden="true" style={{ backgroundColor: serie.cor }} />
-          <span>{serie.simbolo} · {serie.nome}</span>
+          <span>{serie.simbolo} · {serie.campo === "velocidade" && descricaoVelocidade ? descricaoVelocidade : serie.nome}</span>
         </span>)}
       </div>
     </>
